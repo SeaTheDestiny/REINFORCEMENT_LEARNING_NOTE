@@ -1,0 +1,20 @@
+# Reinforcement Learning Notes - Requirements
+# Python 3.7+
+
+# Core scientific computing
+numpy>=1.19.0
+matplotlib>=3.3.0
+
+# Deep Learning
+torch>=1.9.0
+torchvision>=0.10.0
+
+# Reinforcement Learning Environments
+gymnasium>=0.26.0
+
+# Image processing and visualization
+imageio>=2.9.0
+pillow>=8.0.0
+
+# Optional: For better visualization
+# seaborn>=0.11.0
