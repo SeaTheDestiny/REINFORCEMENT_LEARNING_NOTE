@@ -11,9 +11,9 @@ from collections import deque
 gamma = 0.99
 C = 100                    # target network update frequency (steps)
 BUFFER_SIZE = 100_000
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 learning_rate = 5e-4
-NUM_EPISODES = 500
+NUM_EPISODES = 1500
 
 # ======================
 # Q Network
