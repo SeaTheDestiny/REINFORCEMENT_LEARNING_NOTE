@@ -9,8 +9,8 @@ import network
 from pathlib import Path
 
 # Hyperparameters
-NUM_EPISODES = 1500
-MAX_EPISODE_LENGTH = 1000
+NUM_EPISODES = 4800
+MAX_EPISODE_LENGTH = 10000
 gamma = 0.99
 learning_rate_theta = 5e-4
 learning_rate_w = 5e-4

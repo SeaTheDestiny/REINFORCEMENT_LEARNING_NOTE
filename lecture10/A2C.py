@@ -9,7 +9,7 @@ import network
 from pathlib import Path
 
 # Hyperparameters
-NUM_EPISODES = 1500
+NUM_EPISODES = 4800
 MAX_EPISODE_LENGTH = 10000
 gamma = 0.99
 learning_rate_theta = 5e-4
@@ -77,11 +77,7 @@ def A2C_learning(env, num_episodes=NUM_EPISODES):
                     td_target = reward
                 else:
                     # Sample next action (SARSA style)
-                    next_action_probs = actor(next_state_tensor)
-                    next_dist = torch.distributions.Categorical(next_action_probs)
-                    # next_action = next_dist.sample().item()
-
-                    # next_action_one_hot = F.one_hot(torch.tensor([next_action]), num_classes=action_size).float()
+                                        
                     v_snext = critic(next_state_tensor)
                     td_target = reward + gamma * v_snext
 
