@@ -35,6 +35,7 @@ class GomokuEnv(gym.Env):
         self.last_move = None
         self.done = False
         self.winner = None
+        self.max_consecutive = 0 # Track consecutive stones for rewards
 
         # 记录帧用于生成GIF
         self.frames = []
@@ -92,7 +93,7 @@ class GomokuEnv(gym.Env):
         if self._check_win(row, col):
             self.done = True
             self.winner = self.current_player
-            reward = 1.0  # 胜利奖励
+            reward = 1.0  # 胜利奖励 (标准化为1)
             return self.board.copy(), reward, True, False, {"winner": self.winner}
 
         # 检查是否平局
@@ -102,8 +103,13 @@ class GomokuEnv(gym.Env):
             reward = 0.0  # 平局奖励
             return self.board.copy(), reward, False, True, {"winner": self.winner}
 
-        # 中间步奖励为0
+        # 稠密奖励 (Dense Reward)
+        # 鼓励连子: 4连给0.05, 3连给0.01 (非常小，避免干扰主目标)
         reward = 0.0
+        if self.max_consecutive == 4:
+            reward = 0.05
+        elif self.max_consecutive == 3:
+            reward = 0.01
 
         # 切换玩家
         self.current_player = 3 - self.current_player  # 1->2, 2->1
@@ -123,6 +129,8 @@ class GomokuEnv(gym.Env):
         player = self.board[row, col]
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]  # 水平、垂直、对角线、反对角线
 
+        self.max_consecutive = 1 # Store max consecutive for reward shaping
+
         for dr, dc in directions:
             count = 1  # 当前落子算1个
 
@@ -139,6 +147,8 @@ class GomokuEnv(gym.Env):
                 count += 1
                 r -= dr
                 c -= dc
+
+            self.max_consecutive = max(self.max_consecutive, count)
 
             if count >= 5:
                 return True
@@ -261,28 +271,31 @@ class GomokuEnv(gym.Env):
 
     def get_normalized_state(self, player):
         """
-        获取视角归一化后的状态
+        获取视角归一化后的状态 (3通道特征)
 
         Args:
             player: 当前玩家（1或2）
 
         Returns:
-            normalized_state: np.ndarray
-                - 1: 当前玩家的棋子
-                - -1: 对手的棋子
-                - 0: 空格
+            state: np.ndarray (3, 15, 15)
+                - Channel 0: 当前玩家的棋子 (1=有, 0=无)
+                - Channel 1: 对手的棋子 (1=有, 0=无)
+                - Channel 2: 上一步落子位置 (1=是, 0=否)
         """
-        normalized = np.zeros_like(self.board, dtype=np.float32)
+        state = np.zeros((3, self.board_size, self.board_size), dtype=np.float32)
 
-        # 当前玩家的棋子标记为1
-        normalized[self.board == player] = 1
+        # Channel 0: 当前玩家
+        state[0] = (self.board == player).astype(np.float32)
 
-        # 对手的棋子标记为-1
+        # Channel 1: 对手
         opponent = 3 - player
-        normalized[self.board == opponent] = -1
+        state[1] = (self.board == opponent).astype(np.float32)
 
-        # 空格保持为0
-        normalized[self.board == 0] = 0
+        # Channel 2: 上一步位置
+        if self.last_move:
+            state[2, self.last_move[0], self.last_move[1]] = 1.0
+
+        return state
 
         return normalized
 

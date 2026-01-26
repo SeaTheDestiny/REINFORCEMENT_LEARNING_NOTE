@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 import torch
+import torch.nn.functional as F
 import numpy as np
 from gomoku_env import GomokuEnv
 import network
@@ -32,7 +33,8 @@ def load_model():
         checkpoint = torch.load('model/gomoku_ppo_model.pth', map_location='cpu')
         state_size = 225  # 15x15
         action_size = 225
-        actor = network.ActorNetwork(state_size, action_size)
+        # 加载与PPO.py一致的网络结构：num_blocks=6, hidden_dim=128
+        actor = network.ActorNetwork(state_size, action_size, num_blocks=6, hidden_dim=128)
         actor.load_state_dict(checkpoint['actor_state_dict'])
         actor.eval()
         return True
@@ -82,6 +84,13 @@ def start_game():
 def make_move():
     """用户下子"""
     global env, user_player, ai_player
+
+    # 检查环境是否已初始化（防止服务器重启导致 env 丢失）
+    if env is None:
+        return jsonify({
+            'success': False,
+            'message': '游戏会话已过期，请刷新页面重新开始'
+        })
 
     data = request.json
     row = data.get('row')
@@ -170,7 +179,15 @@ def ai_move():
     # 使用模型预测动作
     with torch.no_grad():
         state_tensor = torch.FloatTensor(normalized_state).unsqueeze(0)
-        action_probs = actor(state_tensor)
+        action_logits = actor(state_tensor)
+        
+        # 屏蔽非法动作（已占用的位置）
+        mask = torch.from_numpy((env.board.flatten() == 0).astype(np.float32)).unsqueeze(0)
+        invalid_mask = (1 - mask) * -1e9
+
+        # 应用mask后进行softmax，得到合法的概率分布
+        masked_logits = action_logits + invalid_mask
+        action_probs = F.softmax(masked_logits, dim=-1)
         
         if DEBUG_MODE:
             # 获取 top-5 概率的动作
