@@ -1,2 +1,2 @@
 *.pth
-wuziqi/model/
+wuziqi/model/*.pth
